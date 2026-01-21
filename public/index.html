@@ -20,19 +20,11 @@
 <body>
 
 <header>
-	<h1>Random Pok&eacute;mon Generator</h1>
+	<h1>Pokémon Team Builder</h1>
 </header>
 
-<form action="?" method="get" id="controls" class="menu" onsubmit="generateRandom(); return false;">
-	<fieldset>
-		<label>Generate <select name="n" id="n" required>
-			<option value="1">1</option>
-			<option value="2">2</option>
-			<option value="3">3</option>
-			<option value="4">4</option>
-			<option value="5">5</option>
-			<option value="6" selected>6</option>
-		</select> Pok&eacute;mon.</label>
+<form action="?" method="get" id="controls" class="menu" onsubmit="return false;">
+	<fieldset id="shared-filters" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:0.5em;margin:0 auto;">
 
 		<div class="dropdown" id="regions">
 			<button type="button" data-plural-name="Regions">All Regions</button>
@@ -87,9 +79,7 @@
 				</ul>
 			</div>
 		</div>
-	</fieldset>
 
-	<fieldset>
 		<div class="dropdown">
 			<button type="button" data-plural-name="Legendaries" data-name-for-count="Legendary Types" data-allow-none="true">All Legendaries</button>
 			<div class="popup">
@@ -126,20 +116,9 @@
 				</ul>
 			</div>
 		</div>
-	</fieldset>
-
-	<fieldset>
-		<select name="display" id="display" required>
-			<option value="names">Names Only</option>
-			<option value="sprites">Sprites Only</option>
-			<option value="both" selected>Names and Sprites</option>
-		</select>
-
-		<label><input type="checkbox" id="natures" name="natures" value="true">Natures</label>
-		<label><input type="checkbox" id="genders" name="genders" value="true">Genders</label>
 
 		<div class="dropdown" id="formsDropdown">
-			<button type="button" data-plural-name="Forms" data-allow-showing-two="true" data-allow-none="true">Forms</button>
+			<button type="button" data-plural-name="Forms" data-allow-showing-two="true" data-allow-none="true">All Forms</button>
 			<div class="popup">
 				<ul>
 					<li><label><input type="checkbox" id="forms" name="forms" value="true" data-short-name="Forms" checked>Alternate Forms</label></li>
@@ -148,27 +127,14 @@
 				</ul>
 			</div>
 		</div>
-
-		<input value="Generate" type="submit" />
 	</fieldset>
 </form>
 
-<nav id="history">
-	<button class="hidden text" id="previous" onclick="displayPrevious()">&#x23EA; Previous</button>
-	<button class="hidden text" id="next" onclick="displayNext()">Next &#x23E9;</button>
-</nav>
+
 
 <section id="results"></section>
 
-<button id="shiny-toggler" class="text is-hiding" onclick="toggleShinyDisplay()">
-	<span class="star">&starf;</span>
-	<span id="shiny-count">0</span> shiny Pokémon
-	<span class="is-showing">&and;</span><span class="is-hiding">&or;</span>
-</button>
-<section id="shiny-container" class="menu invisible">
-	<div id="shinies"></div>
-	<button class="text" onclick="clearShinies()">&#x274C; Clear your shiny Pokémon</button>
-</section>
+
 
 <footer>
 	<p>

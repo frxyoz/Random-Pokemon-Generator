@@ -1,6 +1,7 @@
 const STORAGE_OPTIONS_KEY = "options";
 
-const numberDropdown = document.getElementById("n") as HTMLSelectElement;
+// numberDropdown no longer exists since we removed generator controls
+const numberDropdown: HTMLSelectElement | null = null;
 
 const regionsDropdown = document.getElementById("regions") as HTMLSelectElement;
 const allRegionsCheckbox: HTMLInputElement = regionsDropdown.querySelector("input[value='all']");
@@ -23,9 +24,14 @@ const evolvedOnceCheckbox = document.getElementById("evolvedOnce") as HTMLInputE
 const evolvedTwiceCheckbox = document.getElementById("evolvedTwice") as HTMLInputElement;
 const evolutionCountCheckboxes = [unevolvedCheckbox, evolvedOnceCheckbox, evolvedTwiceCheckbox];
 
-const displayDropdown = document.getElementById("display") as HTMLSelectElement;
-const naturesCheckbox = document.getElementById("natures") as HTMLInputElement;
-const gendersCheckbox = document.getElementById("genders") as HTMLInputElement;
+// Display is always "both" since we removed the display options
+function getDisplayValue(): string {
+	return 'both';
+}
+
+// Natures and genders removed from UI
+const naturesCheckbox: HTMLInputElement | null = null;
+const gendersCheckbox: HTMLInputElement | null = null;
 
 const formsDropdown = document.getElementById("formsDropdown") as HTMLInputElement;
 const formsCheckbox = document.getElementById("forms") as HTMLInputElement;
@@ -59,8 +65,9 @@ type Options = {
 }
 
 function getOptionsFromForm(): Options {
+	const displayValue = getDisplayValue();
 	return {
-		n: parseInt(numberDropdown.value),
+		n: 1, // Always generate 1 Pokemon at a time for team builder
 		regions: getSelectedRegions(),
 		types: getSelectedTypes(),
 		sublegendaries: sublegendariesCheckbox.checked,
@@ -71,10 +78,10 @@ function getOptionsFromForm(): Options {
 		evolutionCounts: getEvolutionCounts(),
 		nfes: nfesCheckbox.checked,
 		fullyEvolved: fullyEvolvedCheckbox.checked,
-		names: displayDropdown.value != "sprites",
-		sprites: displayDropdown.value != "names",
-		natures: naturesCheckbox.checked,
-		genders: gendersCheckbox.checked,
+		names: displayValue != "sprites",
+		sprites: displayValue != "names",
+		natures: false,
+		genders: false,
 		forms: formsCheckbox.checked,
 		megas: megasCheckbox.checked,
 		gigantamaxes: gigantamaxesCheckbox.checked
@@ -100,9 +107,7 @@ function getSelectedTypes(): string[] {
 }
 
 function setOptions(options: Partial<Options>) {
-	if (options.n != null) {
-		setDropdownIfValid(numberDropdown, options.n);
-	}
+	// Skip n since numberDropdown no longer exists
 	if (options.regions != null) {
 		const regions = new Set(options.regions);
 		regionCheckboxes.forEach(checkbox => {
@@ -146,22 +151,24 @@ function setOptions(options: Partial<Options>) {
 		fullyEvolvedCheckbox.checked = options.fullyEvolved;
 	}
 
+	// Handle display radio buttons instead of dropdown
 	const sprites = options.sprites == null || options.sprites;
 	const names = options.names == null || options.names;
+	let displayValue = "both";
 	if (sprites && !names) {
-		displayDropdown.value = "sprites";
+		displayValue = "sprites";
 	} else if (names && !sprites) {
-		displayDropdown.value = "names";
-	} else {
-		displayDropdown.value = "both";
+		displayValue = "names";
+	}
+	const displayRadios = Array.from(document.getElementsByName('display') as NodeListOf<HTMLInputElement>);
+	for (const radio of displayRadios) {
+		if (radio.value === displayValue) {
+			radio.checked = true;
+			break;
+		}
 	}
 
-	if (options.natures != null) {
-		naturesCheckbox.checked = options.natures;
-	}
-	if (options.genders != null) {
-		gendersCheckbox.checked = options.genders;
-	}
+	// Skip natures and genders since they're removed from UI
 	if (options.forms != null) {
 		formsCheckbox.checked = options.forms;
 	}

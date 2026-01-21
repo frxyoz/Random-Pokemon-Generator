@@ -19,9 +19,12 @@ async function generateRandom() {
 
 function onPageLoad() {
 	loadOptions();
-	toggleHistoryVisibility();
 	addFormChangeListeners();
 	displayYearsInFooter();
+	// Always start in team builder mode
+	document.body.classList.add('team-mode');
+	document.documentElement.style.background = '#0a0a0a';
+	initializeTeamBuilder();
 }
 document.addEventListener("DOMContentLoaded", onPageLoad);
 

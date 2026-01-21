@@ -29,6 +29,15 @@ interface Pokemon {
 	genderRatio?: {male: number, female: number} | "unknown";
 }
 
+interface PokemonStats {
+	hp: number;
+	attack: number;
+	defense: number;
+	specialAttack: number;
+	specialDefense: number;
+	speed: number;
+}
+
 interface Form {
 	/**
 	 * Display name for this form. If absent, it will default to the base Pokémon's name, also
@@ -66,6 +75,12 @@ class GeneratedPokemon {
 	readonly gender?: "male" | "female";
 	readonly showName: boolean = true;
 	readonly showSprite: boolean = true;
+	/** Base stats for this Pokémon */
+	stats?: PokemonStats;
+	/** The stat that was selected for this Pokémon (for team building) */
+	selectedStat?: keyof PokemonStats;
+	/** The value of the selected stat */
+	selectedStatValue?: number;
 
 	private constructor(pokemon?: Pokemon, form?: Form, options?: Options) {
 		if (!pokemon) {

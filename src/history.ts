@@ -89,6 +89,10 @@ function clearShinies() {
 	}
 }
 
+function getLastFromHistory(): GeneratedPokemon[] | null {
+	return latestPokemon.length > 0 ? latestPokemon[0] : null;
+}
+
 // Allow swiping to the next or previous pages of history.
 document.addEventListener("DOMContentLoaded", () => {
 	let touchStartX = 0;
