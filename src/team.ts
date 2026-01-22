@@ -11,7 +11,7 @@ interface TeamState {
 	team: GeneratedPokemon[];
 	currentScore: number;
 	highScore: number;
-	usedStats: Set<keyof PokemonStats>;
+	usedStats: Set<CoreStatKey>;
 	mode: TeamMode;
 }
 
@@ -38,11 +38,46 @@ function saveHighScore(mode: TeamMode, score: number): void {
 }
 
 /** Fetch Pokemon stats from PokeAPI */
-async function fetchPokemonStats(pokemonId: number): Promise<PokemonStats> {
+async function fetchPokemonStats(pokemonId: number, formName?: string): Promise<PokemonStats> {
 	try {
-		const response = await fetch(`https://pokeapi.co/api/v2/pokemon/${pokemonId}`);
+		// Build the Pokemon name/ID for the API with best-effort form handling
+		let pokemonIdentifier: string | number = pokemonId;
+		if (formName) {
+			const baseSlug = formName.split(' ')[0].toLowerCase()
+				.replace(/[éè]/g, 'e')
+				.replace(/[^a-z0-9\s-]/g, '')
+				.replace(/\s+/g, '-');
+			const formSlug = formName.toLowerCase()
+				.replace(/[éè]/g, 'e')
+				.replace(/[^a-z0-9\s-]/g, '')
+				.replace(/\s+/g, '-');
+			
+			// Heuristics for common form naming patterns in PokeAPI
+			if (formSlug.includes('mega-x')) {
+				pokemonIdentifier = `${baseSlug}-mega-x`;
+			} else if (formSlug.includes('mega-y')) {
+				pokemonIdentifier = `${baseSlug}-mega-y`;
+			} else if (formSlug.includes('mega')) {
+				pokemonIdentifier = `${baseSlug}-mega`;
+			} else if (formSlug.includes('gigantamax')) {
+				pokemonIdentifier = `${baseSlug}-gmax`;
+			} else if (formSlug.includes('alola')) {
+				pokemonIdentifier = `${baseSlug}-alola`;
+			} else if (formSlug.includes('galar')) {
+				pokemonIdentifier = `${baseSlug}-galar`;
+			} else if (formSlug.includes('hisui')) {
+				pokemonIdentifier = `${baseSlug}-hisui`;
+			} else if (formSlug.includes('paldea')) {
+				pokemonIdentifier = `${baseSlug}-paldea`;
+			} else {
+				pokemonIdentifier = formSlug;
+			}
+		}
+		
+		const url = `https://pokeapi.co/api/v2/pokemon/${pokemonIdentifier}`;
+		const response = await fetch(url);
 		if (!response.ok) {
-			throw new Error(`Failed to fetch stats for Pokemon #${pokemonId}`);
+			throw new Error(`Failed to fetch stats for Pokemon ${pokemonIdentifier}`);
 		}
 		const data = await response.json();
 		
@@ -52,13 +87,21 @@ async function fetchPokemonStats(pokemonId: number): Promise<PokemonStats> {
 			statsMap[stat.stat.name] = stat.base_stat;
 		});
 		
+		// Get sprite URLs from API - prefer official artwork, fallback to default
+		let spriteUrl = data.sprites?.other?.['official-artwork']?.front_default || 
+		                data.sprites?.front_default || '';
+		let shinySpriteUrl = data.sprites?.other?.['official-artwork']?.front_shiny ||
+		                     data.sprites?.front_shiny || '';
+		
 		return {
 			hp: statsMap['hp'] || 0,
 			attack: statsMap['attack'] || 0,
 			defense: statsMap['defense'] || 0,
 			specialAttack: statsMap['special-attack'] || 0,
 			specialDefense: statsMap['special-defense'] || 0,
-			speed: statsMap['speed'] || 0
+			speed: statsMap['speed'] || 0,
+			spriteUrl,
+			shinySpriteUrl
 		};
 	} catch (error) {
 		console.error('Error fetching Pokemon stats:', error);
@@ -92,8 +135,9 @@ async function generateTeamPokemon(): Promise<void> {
 		
 		if (generatedPokemon.length > 0) {
 			const pokemon = generatedPokemon[0];
-			// Fetch stats from PokeAPI
-			pokemon.stats = await fetchPokemonStats(pokemon.id);
+			// Fetch stats from PokeAPI (pass form info if available)
+			const formName = pokemon.baseName !== pokemon.name ? pokemon.name : undefined;
+			pokemon.stats = await fetchPokemonStats(pokemon.id, formName);
 			teamState.currentPokemon = pokemon;
 			displayTeamBuilderUI();
 		} else {
@@ -107,7 +151,7 @@ async function generateTeamPokemon(): Promise<void> {
 }
 
 /** Select a stat and add Pokemon to team */
-function selectStat(stat: keyof PokemonStats): void {
+function selectStat(stat: CoreStatKey): void {
 	if (!teamState.currentPokemon || !teamState.currentPokemon.stats) {
 		return;
 	}
@@ -118,7 +162,7 @@ function selectStat(stat: keyof PokemonStats): void {
 		return;
 	}
 
-	const statValue = teamState.currentPokemon.stats[stat];
+	const statValue = teamState.currentPokemon.stats[stat] ?? 0;
 	teamState.currentPokemon.selectedStat = stat;
 	teamState.currentPokemon.selectedStatValue = statValue;
 	
@@ -219,7 +263,7 @@ function displayTeamBuilderUI(): void {
 		if (teamState.currentPokemon.stats) {
 			html += '<div class="stat-buttons">';
 			const stats = teamState.currentPokemon.stats;
-			const statButtons = {
+			const statButtons: Record<CoreStatKey, string> = {
 				hp: 'HP',
 				attack: 'Attack',
 				defense: 'Defense',
@@ -227,13 +271,13 @@ function displayTeamBuilderUI(): void {
 				specialDefense: 'Sp. Def',
 				speed: 'Speed'
 			};
-			
-			// Calculate max stat for progress bar
-			const maxStat = Math.max(...Object.values(stats));
+			const coreStatKeys: CoreStatKey[] = ['hp', 'attack', 'defense', 'specialAttack', 'specialDefense', 'speed'];
+			// Calculate max stat for progress bar using only core stats
+			const maxStat = Math.max(...coreStatKeys.map(k => stats[k] ?? 0), 1);
 			
 			for (const [key, label] of Object.entries(statButtons)) {
-				const statKey = key as keyof PokemonStats;
-				const value = stats[statKey];
+				const statKey = key as CoreStatKey;
+				const value = stats[statKey] ?? 0;
 				const isUsed = teamState.usedStats.has(statKey);
 				const widthPercent = hideStats ? 0 : (value / maxStat) * 100;
 				const displayValue = hideStats ? '???' : value;
@@ -260,7 +304,8 @@ function displayTeamBuilderUI(): void {
 		html += '</div>'; // close pokemon-stat-container
 		html += '</div>'; // close current-pokemon-section
 		
-		// Right side: Chosen stats grid (vertical)
+		// Right side: Chosen stats grid and score (vertical)
+		html += '<div class="stat-selection-right">';
 		html += '<div class="stat-grid">';
 		const statLabels = {
 			hp: 'HP',
@@ -275,7 +320,7 @@ function displayTeamBuilderUI(): void {
 		const maxStatValue = Math.max(...teamState.team.map(p => p.selectedStatValue || 0), 200);
 		
 		for (const [key, label] of Object.entries(statLabels)) {
-			const statKey = key as keyof PokemonStats;
+			const statKey = key as CoreStatKey;
 			const pokemon = teamState.team.find(p => p.selectedStat === statKey);
 			const value = pokemon ? pokemon.selectedStatValue : null;
 			const isFilled = value !== null;
@@ -295,6 +340,19 @@ function displayTeamBuilderUI(): void {
 		}
 		html += '</div>'; // close stat-grid
 		
+		// Score display - on right side below stat-grid
+		html += '<div class="score-display">';
+		html += '<div class="score-item">';
+		html += '<span class="score-label">Current Score</span>';
+		html += `<span class="score-value">${teamState.currentScore}</span>`;
+		html += '</div>';
+		html += '<div class="score-item">';
+		html += '<span class="score-label">High Score</span>';
+		html += `<span class="score-value">${teamState.highScore}</span>`;
+		html += '</div>';
+		html += '</div>';
+		
+		html += '</div>'; // close stat-selection-right
 		html += '</div>'; // close stat-selection-wrapper
 	} else {
 		// Show generate button if no current Pokemon
@@ -347,25 +405,9 @@ function displayTeamBuilderUI(): void {
 		html += '<button class="new-team-btn" onclick="startNewTeam()">Start New Team</button>';
 		html += '</div>';
 	}
-	
-	// Score display - AT THE BOTTOM
-	html += '<div class="score-display">';
-	html += '<div class="score-item">';
-	html += '<span class="score-label">Current Score</span>';
-	html += `<span class="score-value">${teamState.currentScore}</span>`;
-	html += '</div>';
-	html += '<div class="score-item">';
-	html += '<span class="score-label">High Score</span>';
-	html += `<span class="score-value">${teamState.highScore}</span>`;
-	html += '</div>';
-	html += '</div>';
-	
-	html += '</div>';
-	
+
 	resultsContainer.innerHTML = html;
 }
-
-/** Show team complete message */
 function showTeamComplete(): void {
 	const message = teamState.currentScore === teamState.highScore && teamState.highScore > 0
 		? '🎉 Congratulations! New High Score!'
@@ -378,6 +420,15 @@ function showTeamComplete(): void {
 
 /** Helper to get Pokemon sprite path */
 function getPokemonSpritePath(pokemon: GeneratedPokemon): string {
+	// If we have a sprite URL from PokeAPI, use it
+	if (pokemon.stats) {
+		const apiSprite = pokemon.shiny ? pokemon.stats.shinySpriteUrl : pokemon.stats.spriteUrl;
+		if (apiSprite) {
+			return apiSprite;
+		}
+	}
+	
+	// Fallback to local sprites
 	const PATH_TO_SPRITES = 'sprites/normal/';
 	const PATH_TO_SHINY_SPRITES = 'sprites/shiny/';
 	const SPRITE_EXTENSION = '.webp';

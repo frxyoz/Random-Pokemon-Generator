@@ -36,7 +36,11 @@ interface PokemonStats {
 	specialAttack: number;
 	specialDefense: number;
 	speed: number;
+	spriteUrl?: string;
+	shinySpriteUrl?: string;
 }
+
+type CoreStatKey = 'hp' | 'attack' | 'defense' | 'specialAttack' | 'specialDefense' | 'speed';
 
 interface Form {
 	/**
@@ -78,7 +82,7 @@ class GeneratedPokemon {
 	/** Base stats for this Pokémon */
 	stats?: PokemonStats;
 	/** The stat that was selected for this Pokémon (for team building) */
-	selectedStat?: keyof PokemonStats;
+	selectedStat?: CoreStatKey;
 	/** The value of the selected stat */
 	selectedStatValue?: number;
 
@@ -171,6 +175,14 @@ class GeneratedPokemon {
 	}
 
 	private getSpritePath(): string {
+		// Prefer API sprites if available (useful for forms like Mega/regional)
+		if (this.stats) {
+			const apiSprite = this.shiny ? this.stats.shinySpriteUrl : this.stats.spriteUrl;
+			if (apiSprite) {
+				return apiSprite;
+			}
+		}
+
 		const path = this.shiny ? PATH_TO_SHINY_SPRITES : PATH_TO_SPRITES;
 		let name = this.normalizeName();
 		if (this.spriteSuffix) {
